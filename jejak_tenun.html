@@ -1,0 +1,1070 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Jejak Tenun - Label Digital Sarung Sutra Sengkang</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Google Fonts: DM Sans & Fraunces -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Fraunces:ital,opsz,wght@0,9..144,100..900;1,9..144,100..900&display=swap" rel="stylesheet">
+  
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- QR Code Generator Generator Script -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"DM Sans"', 'sans-serif'],
+            serif: ['"Fraunces"', 'serif'],
+          },
+          colors: {
+            brand: {
+              primary: '#4A1830',
+              dark: '#2A0F1C',
+              accent: '#C8963E',
+              bg: '#F5EFE6',
+              surface: '#FFFFFF',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* Texture Motif Pattern Background */
+    .tenun-pattern {
+      background-color: #4A1830;
+      background-image: 
+        repeating-linear-gradient(0deg, rgba(0,0,0,0.2) 0 8px, transparent 8px 32px),
+        repeating-linear-gradient(90deg, rgba(0,0,0,0.2) 0 8px, transparent 8px 32px),
+        repeating-linear-gradient(0deg, #C8963E 0 2px, transparent 2px 64px),
+        repeating-linear-gradient(90deg, #C8963E 0 2px, transparent 2px 64px);
+    }
+    
+    .custom-scrollbar::-webkit-scrollbar {
+      height: 6px;
+      width: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: rgba(0,0,0,0.05);
+      border-radius: 99px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #C8963E;
+      border-radius: 99px;
+    }
+  </style>
+</head>
+<body class="bg-brand-bg text-gray-800 font-sans antialiased min-h-screen flex flex-col selection:bg-brand-accent selection:text-white">
+
+  <!-- App Wrapper -->
+  <div id="app" class="max-w-2xl mx-auto w-full min-h-screen bg-white shadow-xl flex flex-col relative pb-20">
+
+    <!-- Top Admin Bar -->
+    <header class="sticky top-0 z-50 bg-brand-dark text-white px-4 py-3 flex items-center justify-between border-b border-white/10 shadow-md">
+      <div class="flex items-center space-x-2">
+        <i class="fa-solid fa-scroll text-brand-accent text-lg"></i>
+        <span class="font-bold text-sm tracking-wide text-brand-accent font-serif">JEJAK TENUN</span>
+      </div>
+      <div class="flex items-center space-x-2">
+        <button id="btn-mode-pub" onclick="switchView('public')" class="px-3 py-1.5 text-xs font-semibold rounded-lg transition-all bg-brand-accent text-brand-dark shadow">
+          <i class="fa-solid fa-eye mr-1"></i> Lihat Publik
+        </button>
+        <button id="btn-mode-admin" onclick="switchView('admin')" class="px-3 py-1.5 text-xs font-semibold rounded-lg border border-white/20 text-gray-200 hover:bg-white/10 transition-all">
+          <i class="fa-solid fa-user-gear mr-1"></i> Panel Admin
+        </button>
+      </div>
+    </header>
+
+    <!-- Notification Toast -->
+    <div id="toast" class="fixed top-16 left-1/2 -translate-x-1/2 z-50 bg-gray-900 text-white px-4 py-2.5 rounded-xl text-xs font-medium shadow-2xl flex items-center space-x-2 border border-white/10 transition-all duration-300 opacity-0 pointer-events-none">
+      <i id="toast-icon" class="fa-solid fa-circle-check text-emerald-400"></i>
+      <span id="toast-message">Pesan notifikasi</span>
+    </div>
+
+    <!-- MAIN CONTENT AREA -->
+    <main id="main-content" class="flex-grow">
+      <!-- Dynamic Content Rendered Here -->
+      <div class="p-10 text-center text-gray-400 flex flex-col items-center justify-center min-h-[60vh]">
+        <i class="fa-solid fa-circle-notch fa-spin text-3xl text-brand-primary mb-3"></i>
+        <p class="text-sm">Memuat data kain tenun...</p>
+      </div>
+    </main>
+
+  </div>
+
+  <!-- Firebase Integration -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, doc, collection, onSnapshot, setDoc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    // Firebase Configuration & Global Variables
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'jejak-tenun-default';
+    const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
+      apiKey: "demo-api-key",
+      authDomain: "demo-app.firebaseapp.com",
+      projectId: "demo-app",
+      storageBucket: "demo-app.appspot.com",
+      messagingSenderId: "123456789",
+      appId: "1:123456789:web:123456789"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    // App Global State
+    window.state = {
+      view: 'public', // 'public' | 'admin' | 'edit'
+      currentCode: null,
+      products: [],
+      baseUrl: window.location.origin + window.location.pathname,
+      selectedMargin: 20,
+      currentUser: null,
+      unsub: null,
+      // State sementara untuk form pengeditan
+      editingData: null
+    };
+
+    // Template Default Data
+    const defaultProduct = {
+      code: "JT-0001",
+      status: "Terbit",
+      theme: {
+        primary: "#4A1830",
+        dark: "#2A0F1C",
+        accent: "#C8963E",
+        bg: "#F5EFE6",
+        heroImage: "https://images.unsplash.com/photo-1617038260897-41a1f14a8ca0?auto=format&fit=crop&w=800&q=80"
+      },
+      hero: {
+        title: "Sarung Sutra Lagosi Mangkutu",
+        motif: "Lagosi Bunga Ballo",
+        size: "200 cm x 110 cm",
+        price: 1850000
+      },
+      penenun: {
+        allowPhoto: true,
+        photo: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=400&q=80",
+        name: "Ibu Hajjah Bintang",
+        quote: "Setiap helai benang sutra yang disilangkan menyimpan doa dan ketelitian perempuan Sengkang.",
+        village: "Sabbangparu",
+        groupName: "Kelompok Tenun Sutra Alam Wajo"
+      },
+      proses: {
+        photos: [
+          "https://images.unsplash.com/photo-1606760227091-3dd850d97f1d?auto=format&fit=crop&w=600&q=80",
+          "https://images.unsplash.com/photo-1528458909336-e7a0adfac005?auto=format&fit=crop&w=600&q=80"
+        ],
+        steps: [
+          { title: "Pemintalan Benang", desc: "Kepompong ulat sutra dipintal menjadi benang halus berkualitas tinggi.", note: "Sutra Lokal Wajo" },
+          { title: "Pewarnaan Tradisional", desc: "Pewarnaan benang menggunakan bahan rempah & zat pilihan.", note: "3 Kali Pencelupan" },
+          { title: "Penataan Lungsin (Matted)", desc: "Menyusun ribuan helai benang pada bingkai tenun.", note: "Presisi Tinggi" },
+          { title: "Menenun (ATBM)", desc: "Proses memasukkan benang pakan membentuk motif khas.", note: "Membutuhkan 14-21 Hari" },
+          { title: "Penyelesaian & QC", desc: "Pemeriksaan kerapatan tenun, pemotongan sisa benang, dan perapihan pinggiran.", note: "Inspeksi Kualitas" }
+        ]
+      },
+      motif: {
+        name: "Lagosi Bunga Ballo",
+        meaning: "Simbol kemewahan, kehormatan, dan keharmonisan keluarga dalam adat Bugis.",
+        values: ["Kehormatan", "Sabar", "Keharmonisan"],
+        verifier: "Dinas Perindustrian & Kebudayaan Kab. Wajo",
+        source: "Katalog Warisan Budaya Takbenda Sengkang",
+        verifiedDate: "2025-11-12"
+      },
+      biaya: {
+        items: [
+          { name: "Bahan Benang Sutra Utama", amount: 450000 },
+          { name: "Bahan Pewarna & Obat Sutra", amount: 120000 },
+          { name: "Upah Pengrajin Penenun", amount: 650000 },
+          { name: "Operasional & Penyusutan Alat", amount: 80000 }
+        ]
+      },
+      kontak: {
+        allowContact: true,
+        groupName: "Tenun Sutra Bintang Sengkang",
+        address: "Jl. Poros Sengkang - Makassar, Kab. Wajo",
+        whatsapp: "6281234567890",
+        instagram: "@sutra.sengkang.wajo"
+      },
+      updatedAt: new Date().toISOString()
+    };
+
+    // Authenticate & Setup Firestore Sync
+    async function initAuthAndData() {
+      try {
+        let userCredential;
+        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+          userCredential = await signInWithCustomToken(auth, __initial_auth_token);
+        } else {
+          userCredential = await signInAnonymously(auth);
+        }
+        window.state.currentUser = userCredential.user;
+        
+        // Listen to Collection in Firestore
+        // Path Mandatori: /artifacts/{appId}/public/data/products
+        const publicCollection = collection(db, 'artifacts', appId, 'public', 'data', 'products');
+        
+        window.state.unsub = onSnapshot(publicCollection, (snapshot) => {
+          const prods = [];
+          snapshot.forEach((docSnap) => {
+            prods.push(docSnap.data());
+          });
+
+          if (prods.length === 0) {
+            // Seed initial data if collection empty
+            const defaultDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'products', defaultProduct.code);
+            setDoc(defaultDocRef, defaultProduct);
+            window.state.products = [defaultProduct];
+          } else {
+            window.state.products = prods;
+          }
+
+          // Check URL Hash for Specific Product
+          const hash = window.location.hash.replace('#', '');
+          if (hash && window.state.products.some(p => p.code === hash)) {
+            window.state.currentCode = hash;
+          } else if (!window.state.currentCode && window.state.products.length > 0) {
+            window.state.currentCode = window.state.products[0].code;
+          }
+
+          renderUI();
+        }, (error) => {
+          console.error("Firestore error:", error);
+          showToast("Gagal memuat data dari server cloud", "error");
+        });
+
+      } catch (err) {
+        console.error("Auth error:", err);
+        showToast("Gagal melakukan autentikasi", "error");
+      }
+    }
+
+    // Helper Toast
+    window.showToast = function(msg, type = "success") {
+      const toast = document.getElementById('toast');
+      const toastMsg = document.getElementById('toast-message');
+      const toastIcon = document.getElementById('toast-icon');
+
+      toastMsg.textContent = msg;
+      if (type === "error") {
+        toastIcon.className = "fa-solid fa-circle-exclamation text-rose-400";
+      } else {
+        toastIcon.className = "fa-solid fa-circle-check text-emerald-400";
+      }
+
+      toast.classList.remove('opacity-0', 'pointer-events-none');
+      toast.classList.add('opacity-100');
+
+      setTimeout(() => {
+        toast.classList.remove('opacity-100');
+        toast.classList.add('opacity-0', 'pointer-events-none');
+      }, 3000);
+    };
+
+    // Format Currency
+    window.formatRp = function(val) {
+      if (!val || isNaN(val)) return 'Rp 0';
+      return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(val);
+    };
+
+    // View Switcher
+    window.switchView = function(viewMode, code = null) {
+      window.state.view = viewMode;
+      if (code) window.state.currentCode = code;
+
+      const btnPub = document.getElementById('btn-mode-pub');
+      const btnAdmin = document.getElementById('btn-mode-admin');
+
+      if (viewMode === 'public') {
+        btnPub.className = "px-3 py-1.5 text-xs font-semibold rounded-lg transition-all bg-brand-accent text-brand-dark shadow";
+        btnAdmin.className = "px-3 py-1.5 text-xs font-semibold rounded-lg border border-white/20 text-gray-200 hover:bg-white/10 transition-all";
+      } else {
+        btnAdmin.className = "px-3 py-1.5 text-xs font-semibold rounded-lg transition-all bg-brand-accent text-brand-dark shadow";
+        btnPub.className = "px-3 py-1.5 text-xs font-semibold rounded-lg border border-white/20 text-gray-200 hover:bg-white/10 transition-all";
+      }
+
+      renderUI();
+    };
+
+    // MAIN RENDERER
+    function renderUI() {
+      const container = document.getElementById('main-content');
+      const { view, products, currentCode } = window.state;
+
+      if (view === 'public') {
+        const prod = products.find(p => p.code === currentCode) || products[0];
+        if (!prod) {
+          container.innerHTML = `
+            <div class="p-12 text-center">
+              <i class="fa-solid fa-box-open text-4xl text-gray-300 mb-3"></i>
+              <h2 class="text-xl font-bold font-serif text-gray-700">Tidak ada data sarung</h2>
+              <p class="text-xs text-gray-500 mt-1">Silakan masuk ke Panel Admin untuk menambah data sarung baru.</p>
+            </div>`;
+          return;
+        }
+        container.innerHTML = renderPublicPage(prod);
+        renderQRCode('qr-public-display', getShareUrl(prod.code));
+      } else if (view === 'admin') {
+        container.innerHTML = renderAdminPanel();
+        setTimeout(() => {
+          products.forEach(p => {
+            renderQRCode(`qr-card-${p.code}`, getShareUrl(p.code), 100);
+          });
+        }, 100);
+      } else if (view === 'edit') {
+        container.innerHTML = renderEditForm();
+      }
+    }
+
+    function getShareUrl(code) {
+      const base = window.state.baseUrl.split('#')[0];
+      return `${base}#${code}`;
+    }
+
+    function renderQRCode(elementId, text, size = 128) {
+      const el = document.getElementById(elementId);
+      if (el) {
+        el.innerHTML = "";
+        try {
+          new QRCode(el, {
+            text: text,
+            width: size,
+            height: size,
+            colorDark: "#2A0F1C",
+            colorLight: "#ffffff",
+            correctLevel: QRCode.CorrectLevel.H
+          });
+        } catch (e) {
+          console.error("QR Error", e);
+        }
+      }
+    }
+
+    // --- TEMPLATE PUBLIC VIEW ---
+    function renderPublicPage(p) {
+      const items = p.biaya?.items || [];
+      const totalCost = items.reduce((acc, i) => acc + (Number(i.amount) || 0), 0);
+      const wageItem = items.find(i => /upah/i.test(i.name)) || { amount: 0 };
+      const wageAmt = Number(wageItem.amount) || 0;
+
+      const marginPct = window.state.selectedMargin || 20;
+      const marginVal = totalCost * (marginPct / 100);
+      const estimatedPrice = totalCost + marginVal;
+      const wagePercentOfPrice = estimatedPrice > 0 ? Math.round((wageAmt / estimatedPrice) * 100) : 0;
+
+      return `
+        <div class="bg-brand-bg min-h-screen">
+          <!-- Hero Section -->
+          <div class="relative overflow-hidden text-white tenun-pattern p-6 pt-8 pb-12 rounded-b-3xl shadow-xl">
+            <div class="absolute inset-0 bg-gradient-to-t from-brand-dark via-brand-dark/60 to-transparent"></div>
+            
+            <div class="relative z-10 flex justify-between items-center mb-6">
+              <span class="text-xs font-bold tracking-widest text-brand-accent uppercase bg-black/40 px-3 py-1 rounded-full border border-brand-accent/30">
+                JEJAK TENUN · SENGKANG
+              </span>
+              <span class="text-xs px-2.5 py-1 rounded-full ${p.status === 'Terbit' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' : 'bg-amber-500/20 text-amber-300 border border-amber-500/40'} font-medium">
+                ${p.status === 'Terbit' ? '<i class="fa-solid fa-shield-check mr-1"></i> Terverifikasi' : 'Draf Pengrajin'}
+              </span>
+            </div>
+
+            <div class="relative z-10 my-4">
+              <span class="text-xs font-mono text-brand-accent/80 tracking-wider">KODE: ${p.code}</span>
+              <h1 class="text-2xl sm:text-3xl font-serif font-bold text-amber-50 mt-1 leading-tight">${p.hero?.title || 'Sarung Sutra Sengkang'}</h1>
+              <p class="text-sm text-gray-200 mt-2 font-light">Motif Khas: <strong class="text-brand-accent font-semibold">${p.hero?.motif || '-'}</strong></p>
+            </div>
+
+            <!-- Image Hero -->
+            ${p.theme?.heroImage ? `
+              <div class="relative z-10 my-4 rounded-2xl overflow-hidden border-2 border-brand-accent/40 shadow-2xl aspect-[16/9]">
+                <img src="${p.theme.heroImage}" alt="${p.hero?.title}" class="w-full h-full object-cover">
+              </div>
+            ` : ''}
+
+            <!-- Badges -->
+            <div class="relative z-10 flex flex-wrap gap-2 mt-4 text-xs">
+              <span class="bg-white/10 border border-white/20 px-3 py-1 rounded-full"><i class="fa-solid fa-location-dot text-brand-accent mr-1"></i> Sengkang, Wajo</span>
+              <span class="bg-white/10 border border-white/20 px-3 py-1 rounded-full"><i class="fa-solid fa-ruler-combined text-brand-accent mr-1"></i> ${p.hero?.size || 'Standard'}</span>
+              ${p.hero?.price ? `<span class="bg-brand-accent text-brand-dark font-bold px-3 py-1 rounded-full shadow">${formatRp(p.hero.price)}</span>` : ''}
+            </div>
+          </div>
+
+          <div class="px-4 -mt-6 relative z-20 space-y-6">
+
+            <!-- Profil Penenun -->
+            <div class="bg-white rounded-2xl p-5 shadow-sm border border-brand-primary/10">
+              <div class="flex items-center space-x-2 text-brand-primary mb-3">
+                <i class="fa-solid fa-hands-holding text-lg text-brand-accent"></i>
+                <h2 class="font-serif font-bold text-lg">Penenun Sarung Ini</h2>
+              </div>
+
+              <div class="flex items-start space-x-4">
+                ${p.penenun?.allowPhoto && p.penenun?.photo ? `
+                  <img src="${p.penenun.photo}" alt="${p.penenun.name}" class="w-16 h-16 rounded-full object-cover border-2 border-brand-accent flex-shrink-0">
+                ` : `
+                  <div class="w-16 h-16 rounded-full bg-brand-bg flex items-center justify-center text-brand-primary font-bold text-xl border-2 border-brand-accent/30 flex-shrink-0">
+                    <i class="fa-solid fa-user-ninja"></i>
+                  </div>
+                `}
+                <div>
+                  <h3 class="font-bold text-gray-900 text-base">${p.penenun?.name || 'Pengrajin Sengkang'}</h3>
+                  <p class="text-xs text-brand-accent font-semibold mt-0.5">${p.penenun?.groupName || 'Kelompok Penenun Sengkang'}</p>
+                  <p class="text-xs text-gray-500 mt-1"><i class="fa-solid fa-map-pin mr-1"></i> Desa/Kampung ${p.penenun?.village || 'Sengkang'}, Kab. Wajo</p>
+                </div>
+              </div>
+
+              ${p.penenun?.quote ? `
+                <div class="mt-4 p-3 bg-brand-bg rounded-xl border-l-4 border-brand-accent text-xs italic text-gray-700">
+                  "${p.penenun.quote}"
+                </div>
+              ` : ''}
+            </div>
+
+            <!-- Cerita & Makna Motif -->
+            <div class="bg-white rounded-2xl p-5 shadow-sm border border-brand-primary/10">
+              <div class="flex items-center space-x-2 text-brand-primary mb-3">
+                <i class="fa-solid fa-book-open text-lg text-brand-accent"></i>
+                <h2 class="font-serif font-bold text-lg">Filosofi & Makna Motif</h2>
+              </div>
+              <p class="text-sm text-gray-700 leading-relaxed">${p.motif?.meaning || 'Belum ada penjelasan deskripsi motif.'}</p>
+
+              ${p.motif?.values && p.motif.values.length > 0 ? `
+                <div class="flex flex-wrap gap-1.5 mt-3">
+                  ${p.motif.values.map(v => `<span class="bg-brand-primary/5 text-brand-primary text-xs font-semibold px-2.5 py-1 rounded-md">#${v}</span>`).join('')}
+                </div>
+              ` : ''}
+
+              <div class="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
+                <span><i class="fa-solid fa-certificate text-emerald-600 mr-1"></i> Verifikasi: <strong>${p.motif?.verifier || 'Budayawan Sengkang'}</strong></span>
+              </div>
+            </div>
+
+            <!-- Tahapan Proses Pembuatan Tenun (Publik View) -->
+            <div class="bg-white rounded-2xl p-5 shadow-sm border border-brand-primary/10">
+              <div class="flex items-center space-x-2 text-brand-primary mb-3">
+                <i class="fa-solid fa-diagram-project text-lg text-brand-accent"></i>
+                <h2 class="font-serif font-bold text-lg">Proses Pembuatan Tenun</h2>
+              </div>
+
+              <!-- Galeri Foto Proses -->
+              ${p.proses?.photos && p.proses.photos.length > 0 ? `
+                <div class="flex space-x-3 overflow-x-auto custom-scrollbar pb-3 mb-4">
+                  ${p.proses.photos.map(img => `
+                    <img src="${img}" class="w-40 h-28 object-cover rounded-xl border border-gray-200 flex-shrink-0 shadow-sm" onerror="this.src='https://placehold.co/300x200/4A1830/FFF?text=Foto+Proses'">
+                  `).join('')}
+                </div>
+              ` : ''}
+
+              <!-- Steps List -->
+              <div class="space-y-3 relative before:absolute before:inset-0 before:left-3.5 before:w-0.5 before:bg-brand-primary/10">
+                ${(p.proses?.steps || []).map((s, idx) => `
+                  <div class="flex items-start space-x-3 relative z-10">
+                    <div class="w-7 h-7 rounded-full bg-brand-primary text-white text-xs font-bold flex items-center justify-center flex-shrink-0 border-2 border-white shadow">
+                      ${idx + 1}
+                    </div>
+                    <div class="bg-brand-bg/60 p-3 rounded-xl flex-grow">
+                      <h4 class="font-bold text-xs text-brand-dark">${s.title}</h4>
+                      <p class="text-xs text-gray-600 mt-0.5">${s.desc}</p>
+                      ${s.note ? `<span class="inline-block mt-1 text-[10px] bg-brand-accent/20 text-brand-dark px-2 py-0.5 rounded font-medium">${s.note}</span>` : ''}
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+
+            <!-- Transparansi Biaya & Kalkulator (Publik View) -->
+            <div class="bg-white rounded-2xl p-5 shadow-sm border border-brand-primary/10">
+              <div class="flex items-center justify-between mb-3">
+                <div class="flex items-center space-x-2 text-brand-primary">
+                  <i class="fa-solid fa-calculator text-lg text-brand-accent"></i>
+                  <h2 class="font-serif font-bold text-lg">Transparansi Biaya Produksi</h2>
+                </div>
+              </div>
+
+              <p class="text-xs text-gray-500 mb-4">Rincian estimasi modal dasar pembuatan kain sarung sutra ini:</p>
+
+              <div class="space-y-2 mb-4">
+                ${items.map(item => `
+                  <div class="flex justify-between items-center text-xs py-1 border-b border-gray-100">
+                    <span class="text-gray-700">${item.name}</span>
+                    <span class="font-mono font-semibold text-gray-900">${formatRp(item.amount)}</span>
+                  </div>
+                `).join('')}
+                <div class="flex justify-between items-center text-xs font-bold pt-2 text-brand-dark">
+                  <span>Total Biaya Modal (COGS)</span>
+                  <span class="font-mono text-sm text-brand-primary">${formatRp(totalCost)}</span>
+                </div>
+              </div>
+
+              <!-- Interaktif Margin Slider -->
+              <div class="bg-brand-dark text-white p-4 rounded-xl space-y-3">
+                <div class="flex justify-between items-center text-xs">
+                  <span class="text-gray-300">Simulasi Margin Keuntungan Pengrajin:</span>
+                  <span class="font-bold text-brand-accent text-sm">${marginPct}%</span>
+                </div>
+
+                <div class="grid grid-cols-4 gap-2">
+                  ${[10, 20, 30, 40].map(m => `
+                    <button onclick="window.state.selectedMargin=${m}; renderUI();" class="py-1 text-xs rounded-lg font-bold transition-all ${marginPct === m ? 'bg-brand-accent text-brand-dark' : 'bg-white/10 text-white hover:bg-white/20'}">
+                      ${m}%
+                    </button>
+                  `).join('')}
+                </div>
+
+                <div class="pt-2 border-t border-white/10 space-y-1 text-xs">
+                  <div class="flex justify-between text-gray-300">
+                    <span>Estimasi Harga Jual:</span>
+                    <span class="font-bold text-brand-accent font-mono text-base">${formatRp(estimatedPrice)}</span>
+                  </div>
+                  <p class="text-[11px] text-emerald-400 italic">
+                    <i class="fa-solid fa-heart mr-1"></i> Dari harga jual ini, porsi upah langsung penenun sekitar <strong>${wagePercentOfPrice}%</strong>.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Kontak & Pesan WhatsApp -->
+            ${p.kontak?.allowContact && p.kontak?.whatsapp ? `
+              <div class="bg-gradient-to-br from-emerald-800 to-teal-900 text-white rounded-2xl p-5 shadow-lg space-y-3 text-center">
+                <h3 class="font-serif font-bold text-base">Tertarik Memiliki Sarung Ini?</h3>
+                <p class="text-xs text-teal-100">Dukung langsung pengrajin lokal Sengkang dengan memesan tanpa perantara.</p>
+                <div class="pt-2">
+                  <a href="https://wa.me/${p.kontak.whatsapp.replace(/\D/g,'')}?text=Halo%20${encodeURIComponent(p.penenun?.name || 'Pengrajin')},%20saya%20tertarik%20dengan%20sarung%20tenun%20kode%20${p.code}" target="_blank" class="inline-flex items-center justify-center px-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-white font-bold text-xs rounded-xl shadow-md transition-all space-x-2">
+                    <i class="fa-brands fa-whatsapp text-lg"></i>
+                    <span>Hubungi Pengrajin Via WhatsApp</span>
+                  </a>
+                </div>
+              </div>
+            ` : ''}
+
+            <!-- QR Code Display & Share Footer -->
+            <div class="bg-white rounded-2xl p-5 shadow-sm border border-brand-primary/10 text-center space-y-3">
+              <span class="text-xs font-bold text-brand-primary uppercase tracking-wider">Verifikasi Keaslian Label Digital</span>
+              <div class="flex justify-center my-2">
+                <div id="qr-public-display" class="p-3 bg-white border border-gray-200 rounded-xl shadow-inner"></div>
+              </div>
+              <p class="text-xs text-gray-500 font-mono">${getShareUrl(p.code)}</p>
+              <button onclick="navigator.clipboard.writeText('${getShareUrl(p.code)}'); showToast('Tautan berhasil disalin!');" class="px-4 py-2 bg-brand-bg hover:bg-gray-200 text-brand-primary font-semibold text-xs rounded-lg transition-all">
+                <i class="fa-regular fa-copy mr-1"></i> Salin Tautan Bagikan
+              </button>
+            </div>
+
+          </div>
+        </div>
+      `;
+    }
+
+    // --- TEMPLATE ADMIN PANEL VIEW ---
+    function renderAdminPanel() {
+      const { products } = window.state;
+
+      return `
+        <div class="p-5 bg-gray-50 min-h-screen space-y-6">
+          
+          <!-- Admin Header -->
+          <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200 space-y-3">
+            <div class="flex justify-between items-center">
+              <div>
+                <h1 class="font-serif font-bold text-xl text-gray-900">Pengelolaan Sarung Tenun</h1>
+                <p class="text-xs text-gray-500">Kelola koleksi kain, publikasikan, dan bagikan QR Code.</p>
+              </div>
+              <button onclick="createNewProduct()" class="px-3 py-2 bg-brand-primary hover:bg-brand-dark text-white font-bold text-xs rounded-xl shadow transition-all flex items-center space-x-1">
+                <i class="fa-solid fa-plus"></i>
+                <span>Tambah Sarung</span>
+              </button>
+            </div>
+
+            <!-- Base URL Settings -->
+            <div class="pt-3 border-t border-gray-100 flex items-center space-x-2">
+              <input id="input-base-url" type="text" value="${window.state.baseUrl}" class="flex-grow text-xs font-mono p-2 bg-gray-100 border border-gray-300 rounded-lg" placeholder="https://domain-anda.com">
+              <button onclick="updateBaseUrl()" class="px-3 py-2 bg-gray-800 text-white font-semibold text-xs rounded-lg hover:bg-black">
+                Simpan URL
+              </button>
+            </div>
+          </div>
+
+          <!-- Product Cards Grid -->
+          <div class="space-y-4">
+            <h2 class="text-xs font-bold text-gray-500 uppercase tracking-wider">Daftar Sarung Tersimpan (${products.length})</h2>
+
+            ${products.map(p => `
+              <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                
+                <div class="flex items-start space-x-3">
+                  <div id="qr-card-${p.code}" class="p-1 bg-white border border-gray-200 rounded-lg flex-shrink-0"></div>
+                  <div>
+                    <div class="flex items-center space-x-2">
+                      <span class="font-mono text-xs font-bold text-brand-primary">${p.code}</span>
+                      <span class="px-2 py-0.5 text-[10px] font-bold rounded-full ${p.status === 'Terbit' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}">
+                        ${p.status}
+                      </span>
+                    </div>
+                    <h3 class="font-bold text-sm text-gray-900 mt-1">${p.hero?.title || 'Tanpa Judul'}</h3>
+                    <p class="text-xs text-gray-500">Motif: ${p.hero?.motif || '-'} · Penenun: ${p.penenun?.name || '-'}</p>
+                  </div>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-2 w-full md:w-auto justify-end border-t md:border-t-0 pt-3 md:pt-0">
+                  <button onclick="window.switchView('public', '${p.code}')" class="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold text-xs rounded-lg transition-all">
+                    <i class="fa-solid fa-eye mr-1"></i> Lihat
+                  </button>
+                  <button onclick="openEditForm('${p.code}')" class="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white font-semibold text-xs rounded-lg shadow-sm transition-all">
+                    <i class="fa-solid fa-pen-to-square mr-1"></i> Edit Lengkap
+                  </button>
+                  <button onclick="togglePublishStatus('${p.code}')" class="px-3 py-1.5 ${p.status === 'Terbit' ? 'bg-rose-500 hover:bg-rose-600' : 'bg-emerald-600 hover:bg-emerald-700'} text-white font-semibold text-xs rounded-lg transition-all">
+                    ${p.status === 'Terbit' ? 'Jadikan Draf' : 'Terbitkan'}
+                  </button>
+                  <button onclick="deleteProduct('${p.code}')" class="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition-all" title="Hapus">
+                    <i class="fa-solid fa-trash"></i>
+                  </button>
+                </div>
+
+              </div>
+            `).join('')}
+          </div>
+
+        </div>
+      `;
+    }
+
+    // --- TEMPLATE EDIT FORM LENGKAP ---
+    function renderEditForm() {
+      const p = window.state.editingData;
+      if (!p) return `<div class="p-10 text-center">Data tidak ditemukan.</div>`;
+
+      // Calculate total cogs for editing view
+      const totalCost = (p.biaya?.items || []).reduce((acc, item) => acc + (Number(item.amount) || 0), 0);
+
+      return `
+        <div class="p-5 bg-gray-50 min-h-screen space-y-6">
+          <div class="flex justify-between items-center bg-white p-4 rounded-xl border border-gray-200 shadow-sm sticky top-14 z-30">
+            <div>
+              <span class="text-xs font-mono text-brand-accent font-bold">${p.code}</span>
+              <h1 class="font-serif font-bold text-lg text-gray-900">Formulir Pengeditan Lengkap</h1>
+            </div>
+            <button onclick="window.switchView('admin')" class="px-3 py-1.5 bg-gray-200 text-gray-700 text-xs font-semibold rounded-lg hover:bg-gray-300">
+              <i class="fa-solid fa-arrow-left mr-1"></i> Batal
+            </button>
+          </div>
+
+          <form id="form-edit-product" onsubmit="saveProductData(event)" class="space-y-6">
+            
+            <!-- SECTION 1: INFORMASI UTAMA -->
+            <div class="bg-white p-5 rounded-2xl border border-gray-200 space-y-4 shadow-sm">
+              <div class="flex items-center space-x-2 text-brand-primary border-b pb-2">
+                <i class="fa-solid fa-circle-info text-brand-accent"></i>
+                <h3 class="font-serif font-bold text-base">1. Informasi Utama Sarung</h3>
+              </div>
+              
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-xs font-semibold text-gray-600 mb-1">Status Publikasi</label>
+                  <select id="edit-status" class="w-full text-xs p-2.5 border rounded-xl bg-gray-50 font-medium">
+                    <option value="Terbit" ${p.status === 'Terbit' ? 'selected' : ''}>Terbit (Publik)</option>
+                    <option value="Draf" ${p.status === 'Draf' ? 'selected' : ''}>Draf (Pengrajin)</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-xs font-semibold text-gray-600 mb-1">Harga Jual (Rp)</label>
+                  <input id="edit-price" type="number" value="${p.hero?.price || ''}" class="w-full text-xs p-2.5 border rounded-xl" placeholder="1850000">
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-xs font-semibold text-gray-600 mb-1">Nama Sarung / Produk</label>
+                <input id="edit-title" type="text" value="${p.hero?.title || ''}" class="w-full text-xs p-2.5 border rounded-xl" placeholder="Sarung Sutra Lagosi Mangkutu">
+              </div>
+
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-xs font-semibold text-gray-600 mb-1">Nama Motif Khas</label>
+                  <input id="edit-motif-name" type="text" value="${p.hero?.motif || ''}" class="w-full text-xs p-2.5 border rounded-xl" placeholder="Lagosi Bunga Ballo">
+                </div>
+                <div>
+                  <label class="block text-xs font-semibold text-gray-600 mb-1">Ukuran Kain</label>
+                  <input id="edit-size" type="text" value="${p.hero?.size || ''}" class="w-full text-xs p-2.5 border rounded-xl" placeholder="200 cm x 110 cm">
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-xs font-semibold text-gray-600 mb-1">URL Foto Utama (Hero Image)</label>
+                <input id="edit-hero-img" type="text" value="${p.theme?.heroImage || ''}" class="w-full text-xs p-2.5 border rounded-xl" placeholder="https://images.unsplash.com/...">
+              </div>
+            </div>
+
+            <!-- SECTION 2: PROFIL PENENUN -->
+            <div class="bg-white p-5 rounded-2xl border border-gray-200 space-y-4 shadow-sm">
+              <div class="flex items-center space-x-2 text-brand-primary border-b pb-2">
+                <i class="fa-solid fa-user-ninja text-brand-accent"></i>
+                <h3 class="font-serif font-bold text-base">2. Profil Penenun & Kelompok</h3>
+              </div>
+
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-xs font-semibold text-gray-600 mb-1">Nama Penenun</label>
+                  <input id="edit-penenun-name" type="text" value="${p.penenun?.name || ''}" class="w-full text-xs p-2.5 border rounded-xl">
+                </div>
+                <div>
+                  <label class="block text-xs font-semibold text-gray-600 mb-1">Desa / Kampung</label>
+                  <input id="edit-penenun-village" type="text" value="${p.penenun?.village || ''}" class="w-full text-xs p-2.5 border rounded-xl">
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-xs font-semibold text-gray-600 mb-1">Nama Kelompok Tenun / Usaha</label>
+                <input id="edit-penenun-group" type="text" value="${p.penenun?.groupName || ''}" class="w-full text-xs p-2.5 border rounded-xl">
+              </div>
+
+              <div>
+                <label class="block text-xs font-semibold text-gray-600 mb-1">URL Foto Penenun</label>
+                <input id="edit-penenun-photo" type="text" value="${p.penenun?.photo || ''}" class="w-full text-xs p-2.5 border rounded-xl">
+              </div>
+
+              <div>
+                <label class="block text-xs font-semibold text-gray-600 mb-1">Kutipan / Pesan Penenun</label>
+                <textarea id="edit-penenun-quote" rows="2" class="w-full text-xs p-2.5 border rounded-xl">${p.penenun?.quote || ''}</textarea>
+              </div>
+            </div>
+
+            <!-- SECTION 3: PROSES PEMBUATAN TENUN (EKSPLISIT) -->
+            <div class="bg-white p-5 rounded-2xl border-2 border-brand-accent/40 space-y-4 shadow-sm bg-amber-50/20">
+              <div class="flex items-center justify-between border-b border-brand-accent/20 pb-2">
+                <div class="flex items-center space-x-2 text-brand-primary">
+                  <i class="fa-solid fa-diagram-project text-brand-accent text-lg"></i>
+                  <h3 class="font-serif font-bold text-base text-brand-dark">3. Section: Proses Pembuatan Tenun</h3>
+                </div>
+                <span class="text-[10px] font-bold bg-brand-accent text-brand-dark px-2.5 py-0.5 rounded-full">Langkah & Galeri</span>
+              </div>
+
+              <!-- Input URL Foto Galeri Proses -->
+              <div class="space-y-2">
+                <div class="flex justify-between items-center">
+                  <label class="block text-xs font-bold text-gray-700">Foto Galeri Proses (URL Gambar)</label>
+                  <button type="button" onclick="addProsesPhoto()" class="text-xs text-brand-primary font-bold hover:underline">
+                    <i class="fa-solid fa-plus-circle mr-1"></i>Tambah URL Foto
+                  </button>
+                </div>
+                <div id="container-proses-photos" class="space-y-2">
+                  ${(p.proses?.photos || []).map((photoUrl, idx) => `
+                    <div class="flex items-center space-x-2">
+                      <input type="text" value="${photoUrl}" onchange="updateProsesPhoto(${idx}, this.value)" class="flex-grow text-xs p-2 border rounded-xl" placeholder="https://images.unsplash.com/...">
+                      <button type="button" onclick="removeProsesPhoto(${idx})" class="text-rose-500 hover:bg-rose-50 p-2 rounded-lg">
+                        <i class="fa-solid fa-trash"></i>
+                      </button>
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
+
+              <!-- Input Langkah / Tahapan Tenun -->
+              <div class="space-y-3 pt-3 border-t border-gray-200">
+                <div class="flex justify-between items-center">
+                  <label class="block text-xs font-bold text-gray-700">Tahapan & Steps Pembuatan Tenun</label>
+                  <button type="button" onclick="addProsesStep()" class="px-3 py-1.5 bg-brand-primary text-white text-xs font-bold rounded-xl shadow hover:bg-brand-dark">
+                    <i class="fa-solid fa-plus mr-1"></i>Tambah Langkah
+                  </button>
+                </div>
+
+                <div id="container-proses-steps" class="space-y-3">
+                  ${(p.proses?.steps || []).map((step, idx) => `
+                    <div class="p-3 bg-white border border-gray-300 rounded-xl space-y-2 relative shadow-sm">
+                      <div class="flex justify-between items-center border-b pb-1">
+                        <span class="text-xs font-bold text-brand-primary">Langkah Ke-${idx + 1}</span>
+                        <button type="button" onclick="removeProsesStep(${idx})" class="text-xs text-rose-500 hover:text-rose-700 font-semibold">
+                          <i class="fa-solid fa-trash mr-1"></i>Hapus
+                        </button>
+                      </div>
+                      <div class="grid grid-cols-3 gap-2">
+                        <div class="col-span-2">
+                          <input type="text" value="${step.title}" onchange="updateStepTitle(${idx}, this.value)" class="w-full text-xs p-2 border rounded-lg font-bold" placeholder="Judul Tahap (misal: Pemintalan)">
+                        </div>
+                        <div>
+                          <input type="text" value="${step.note || ''}" onchange="updateStepNote(${idx}, this.value)" class="w-full text-xs p-2 border rounded-lg" placeholder="Catatan/Badge">
+                        </div>
+                      </div>
+                      <div>
+                        <textarea rows="2" onchange="updateStepDesc(${idx}, this.value)" class="w-full text-xs p-2 border rounded-lg" placeholder="Deskripsi ringkas proses ini...">${step.desc}</textarea>
+                      </div>
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
+            </div>
+
+            <!-- SECTION 4: TRANSPARANSI BIAYA PRODUKSI (EKSPLISIT) -->
+            <div class="bg-white p-5 rounded-2xl border-2 border-emerald-500/40 space-y-4 shadow-sm bg-emerald-50/20">
+              <div class="flex items-center justify-between border-b border-emerald-500/20 pb-2">
+                <div class="flex items-center space-x-2 text-emerald-900">
+                  <i class="fa-solid fa-calculator text-emerald-600 text-lg"></i>
+                  <h3 class="font-serif font-bold text-base">4. Section: Transparansi & Rincian Biaya Produksi</h3>
+                </div>
+                <span class="text-[10px] font-bold bg-emerald-600 text-white px-2.5 py-0.5 rounded-full">Kalkulasi Otomatis</span>
+              </div>
+
+              <div class="space-y-3">
+                <div class="flex justify-between items-center">
+                  <label class="block text-xs font-bold text-gray-700">Komponen Biaya Modal (COGS)</label>
+                  <button type="button" onclick="addBiayaItem()" class="px-3 py-1.5 bg-emerald-700 text-white text-xs font-bold rounded-xl shadow hover:bg-emerald-800">
+                    <i class="fa-solid fa-plus mr-1"></i>Tambah Komponen Biaya
+                  </button>
+                </div>
+
+                <div id="container-biaya-items" class="space-y-2">
+                  ${(p.biaya?.items || []).map((item, idx) => `
+                    <div class="flex items-center space-x-2 bg-white p-2 border border-gray-200 rounded-xl shadow-sm">
+                      <input type="text" value="${item.name}" onchange="updateBiayaName(${idx}, this.value)" class="flex-grow text-xs p-2 border rounded-lg" placeholder="Nama Biaya (misal: Benang Sutra)">
+                      <div class="flex items-center space-x-1 w-36">
+                        <span class="text-xs font-bold text-gray-500">Rp</span>
+                        <input type="number" value="${item.amount}" onchange="updateBiayaAmount(${idx}, this.value)" class="w-full text-xs p-2 border rounded-lg font-mono font-bold" placeholder="0">
+                      </div>
+                      <button type="button" onclick="removeBiayaItem(${idx})" class="text-rose-500 hover:bg-rose-50 p-2 rounded-lg">
+                        <i class="fa-solid fa-trash"></i>
+                      </button>
+                    </div>
+                  `).join('')}
+                </div>
+
+                <div class="p-3 bg-emerald-900 text-white rounded-xl flex justify-between items-center text-xs font-bold">
+                  <span>Total Estimasi Biaya Modal:</span>
+                  <span class="font-mono text-sm text-amber-300" id="display-total-cogs">${formatRp(totalCost)}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- SECTION 5: CERITA MOTIF & VERIFIKASI -->
+            <div class="bg-white p-5 rounded-2xl border border-gray-200 space-y-4 shadow-sm">
+              <div class="flex items-center space-x-2 text-brand-primary border-b pb-2">
+                <i class="fa-solid fa-certificate text-brand-accent"></i>
+                <h3 class="font-serif font-bold text-base">5. Makna Motif & Verifikasi Budaya</h3>
+              </div>
+
+              <div>
+                <label class="block text-xs font-semibold text-gray-600 mb-1">Penjelasan Makna & Filosofi Motif</label>
+                <textarea id="edit-motif-meaning" rows="3" class="w-full text-xs p-2.5 border rounded-xl">${p.motif?.meaning || ''}</textarea>
+              </div>
+
+              <div>
+                <label class="block text-xs font-semibold text-gray-600 mb-1">Lembaga / Tokoh Verifikator</label>
+                <input id="edit-motif-verifier" type="text" value="${p.motif?.verifier || ''}" class="w-full text-xs p-2.5 border rounded-xl">
+              </div>
+            </div>
+
+            <!-- SECTION 6: KONTAK WA -->
+            <div class="bg-white p-5 rounded-2xl border border-gray-200 space-y-4 shadow-sm">
+              <div class="flex items-center space-x-2 text-brand-primary border-b pb-2">
+                <i class="fa-solid fa-address-book text-brand-accent"></i>
+                <h3 class="font-serif font-bold text-base">6. Kontak Usaha & WhatsApp</h3>
+              </div>
+
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-xs font-semibold text-gray-600 mb-1">Nomor WhatsApp (misal: 628123456789)</label>
+                  <input id="edit-wa" type="text" value="${p.kontak?.whatsapp || ''}" class="w-full text-xs p-2.5 border rounded-xl">
+                </div>
+                <div>
+                  <label class="block text-xs font-semibold text-gray-600 mb-1">Instagram (misal: @sutra.wajo)</label>
+                  <input id="edit-ig" type="text" value="${p.kontak?.instagram || ''}" class="w-full text-xs p-2.5 border rounded-xl">
+                </div>
+              </div>
+            </div>
+
+            <!-- Submit Button -->
+            <div class="pt-2 sticky bottom-4">
+              <button type="submit" class="w-full py-3.5 bg-brand-primary hover:bg-brand-dark text-white font-bold text-sm rounded-xl shadow-2xl transition-all border border-brand-accent/40 flex items-center justify-center space-x-2">
+                <i class="fa-solid fa-floppy-disk text-base"></i>
+                <span>Simpan Seluruh Perubahan ke Cloud Firebase</span>
+              </button>
+            </div>
+
+          </form>
+        </div>
+      `;
+    }
+
+    // --- FORM DYNAMIC EDITING HELPERS ---
+    window.openEditForm = function(code) {
+      const p = window.state.products.find(item => item.code === code);
+      if (!p) return;
+      window.state.editingData = JSON.parse(JSON.stringify(p));
+      window.state.currentCode = code;
+      window.switchView('edit');
+    };
+
+    // Dynamic Photos
+    window.addProsesPhoto = function() {
+      if (!window.state.editingData.proses) window.state.editingData.proses = { photos: [], steps: [] };
+      if (!window.state.editingData.proses.photos) window.state.editingData.proses.photos = [];
+      window.state.editingData.proses.photos.push('');
+      renderUI();
+    };
+
+    window.updateProsesPhoto = function(idx, val) {
+      window.state.editingData.proses.photos[idx] = val;
+    };
+
+    window.removeProsesPhoto = function(idx) {
+      window.state.editingData.proses.photos.splice(idx, 1);
+      renderUI();
+    };
+
+    // Dynamic Steps
+    window.addProsesStep = function() {
+      if (!window.state.editingData.proses) window.state.editingData.proses = { photos: [], steps: [] };
+      if (!window.state.editingData.proses.steps) window.state.editingData.proses.steps = [];
+      window.state.editingData.proses.steps.push({
+        title: "Langkah Baru",
+        desc: "Deskripsi tahapan pembuatan tenun.",
+        note: "Info Tambahan"
+      });
+      renderUI();
+    };
+
+    window.updateStepTitle = function(idx, val) { window.state.editingData.proses.steps[idx].title = val; };
+    window.updateStepNote = function(idx, val) { window.state.editingData.proses.steps[idx].note = val; };
+    window.updateStepDesc = function(idx, val) { window.state.editingData.proses.steps[idx].desc = val; };
+
+    window.removeProsesStep = function(idx) {
+      window.state.editingData.proses.steps.splice(idx, 1);
+      renderUI();
+    };
+
+    // Dynamic Biaya
+    window.addBiayaItem = function() {
+      if (!window.state.editingData.biaya) window.state.editingData.biaya = { items: [] };
+      if (!window.state.editingData.biaya.items) window.state.editingData.biaya.items = [];
+      window.state.editingData.biaya.items.push({
+        name: "Komponen Biaya Baru",
+        amount: 50000
+      });
+      renderUI();
+    };
+
+    window.updateBiayaName = function(idx, val) { 
+      window.state.editingData.biaya.items[idx].name = val; 
+    };
+
+    window.updateBiayaAmount = function(idx, val) { 
+      window.state.editingData.biaya.items[idx].amount = Number(val) || 0;
+      // Recalculate total for UI display
+      const totalCost = window.state.editingData.biaya.items.reduce((acc, i) => acc + (Number(i.amount) || 0), 0);
+      const disp = document.getElementById('display-total-cogs');
+      if (disp) disp.textContent = formatRp(totalCost);
+    };
+
+    window.removeBiayaItem = function(idx) {
+      window.state.editingData.biaya.items.splice(idx, 1);
+      renderUI();
+    };
+
+    // CRUD Handlers
+    window.createNewProduct = async function() {
+      const nextNum = window.state.products.length + 1;
+      const code = `JT-${String(nextNum).padStart(4, '0')}`;
+      const newProd = JSON.parse(JSON.stringify(defaultProduct));
+      newProd.code = code;
+      newProd.hero.title = `Sarung Sutra Sengkang ${nextNum}`;
+      newProd.status = "Draf";
+      newProd.updatedAt = new Date().toISOString();
+
+      try {
+        const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'products', code);
+        await setDoc(docRef, newProd);
+        showToast(`Sarung baru ${code} telah ditambahkan.`);
+      } catch (err) {
+        console.error("Add error:", err);
+        showToast("Gagal menambahkan sarung baru", "error");
+      }
+    };
+
+    window.togglePublishStatus = async function(code) {
+      const p = window.state.products.find(item => item.code === code);
+      if (!p) return;
+      const newStatus = p.status === 'Terbit' ? 'Draf' : 'Terbit';
+
+      try {
+        const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'products', code);
+        await updateDoc(docRef, { status: newStatus, updatedAt: new Date().toISOString() });
+        showToast(`Status ${code} diubah menjadi ${newStatus}`);
+      } catch (err) {
+        console.error("Update status error:", err);
+        showToast("Gagal mengubah status publikasi", "error");
+      }
+    };
+
+    window.deleteProduct = async function(code) {
+      if (!confirm(`Apakah Anda yakin ingin menghapus sarung ${code}?`)) return;
+
+      try {
+        const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'products', code);
+        await deleteDoc(docRef);
+        showToast(`Sarung ${code} berhasil dihapus.`);
+      } catch (err) {
+        console.error("Delete error:", err);
+        showToast("Gagal menghapus sarung", "error");
+      }
+    };
+
+    window.updateBaseUrl = function() {
+      const input = document.getElementById('input-base-url');
+      if (input && input.value) {
+        window.state.baseUrl = input.value;
+        showToast("Base URL berhasil diperbarui!");
+        renderUI();
+      }
+    };
+
+    window.saveProductData = async function(e) {
+      e.preventDefault();
+      const p = window.state.editingData;
+      if (!p) return;
+
+      p.status = document.getElementById('edit-status').value;
+      p.hero.title = document.getElementById('edit-title').value;
+      p.hero.motif = document.getElementById('edit-motif-name').value;
+      p.hero.size = document.getElementById('edit-size').value;
+      p.hero.price = Number(document.getElementById('edit-price').value) || 0;
+      p.theme.heroImage = document.getElementById('edit-hero-img').value;
+
+      p.penenun.name = document.getElementById('edit-penenun-name').value;
+      p.penenun.village = document.getElementById('edit-penenun-village').value;
+      p.penenun.groupName = document.getElementById('edit-penenun-group').value;
+      p.penenun.photo = document.getElementById('edit-penenun-photo').value;
+      p.penenun.quote = document.getElementById('edit-penenun-quote').value;
+
+      p.motif.meaning = document.getElementById('edit-motif-meaning').value;
+      p.motif.verifier = document.getElementById('edit-motif-verifier').value;
+
+      p.kontak.whatsapp = document.getElementById('edit-wa').value;
+      p.kontak.instagram = document.getElementById('edit-ig').value;
+      p.updatedAt = new Date().toISOString();
+
+      try {
+        const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'products', p.code);
+        await setDoc(docRef, p);
+        showToast(`Data ${p.code} berhasil disimpan ke cloud!`);
+        window.switchView('admin');
+      } catch (err) {
+        console.error("Save error:", err);
+        showToast("Gagal menyimpan data ke cloud", "error");
+      }
+    };
+
+    // Initialize App
+    window.addEventListener('DOMContentLoaded', () => {
+      initAuthAndData();
+    });
+  </script>
+</body>
+</html>
